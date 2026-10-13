@@ -1,0 +1,8 @@
+<html><body><script src="../src/tabocr.js"></script><script>
+window.runOne = async (url) => {
+  const img = new Image(); img.src = url; await img.decode();
+  const t0 = performance.now(); const r = TabOCR.read(img, {strings:6}); const ms = [];
+  for (const st of r.staves) for (const sg of st.segs) ms.push(sg.beats.map(b => Object.fromEntries(b.notes.map(n => [String(n.string), n.text]))));
+  return {ms, ms_time: performance.now()-t0, angle: r.angle, scale: r.scale, staves: r.staves.length, bars: r.staves.map(s=>s.bars.length)};
+};
+</script></body></html>

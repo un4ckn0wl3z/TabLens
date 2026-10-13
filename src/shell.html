@@ -1,0 +1,291 @@
+<title>TabLens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a workbench — source image on the left, recognised tab + rhythm editor below, sticky duration toolbar. */
+:root {
+  --bg: #eef0ed;
+  --panel: #fbfcfa;
+  --ink: #1b211f;
+  --muted: #5d6763;
+  --line: #cfd5d1;
+  --string: #9aa5a0;
+  --accent: #a4501a;        /* rosewood / tortoise amber */
+  --accent-ink: #ffffff;
+  --accent-soft: #f4e3d6;
+  --sel: #1f6f78;           /* steel teal for selection */
+  --sel-soft: #d6ebec;
+  --ok: #2f7d4a; --ok-soft: #dcefe2;
+  --warn: #a86a00; --warn-soft: #fbedcc;
+  --bad: #b3362b; --bad-soft: #f8dcd8;
+  --f-display: "Bai Jamjuree", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans Thai", "Leelawadee UI", "Tahoma", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121513; --panel: #1a1e1c; --ink: #e6ebe8; --muted: #9aa49f; --line: #2e3532; --string: #56605b;
+  --accent: #e08a4a; --accent-ink: #1a0f07; --accent-soft: #3a2517;
+  --sel: #5cc0c9; --sel-soft: #173a3d;
+  --ok: #6cc489; --ok-soft: #173322; --warn: #e3ad4a; --warn-soft: #3a2c10; --bad: #ef7b70; --bad-soft: #3d1b18;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121513; --panel: #1a1e1c; --ink: #e6ebe8; --muted: #9aa49f; --line: #2e3532; --string: #56605b;
+  --accent: #e08a4a; --accent-ink: #1a0f07; --accent-soft: #3a2517;
+  --sel: #5cc0c9; --sel-soft: #173a3d;
+  --ok: #6cc489; --ok-soft: #173322; --warn: #e3ad4a; --warn-soft: #3a2c10; --bad: #ef7b70; --bad-soft: #3d1b18;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 80px; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+
+/* header */
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo svg { width: 38px; height: 38px; }
+.logo h1 { font-size: 26px; font-weight: 700; }
+.top p { margin: 0; color: var(--muted); max-width: 62ch; }
+
+/* panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+.step { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.step .n { font-family: var(--f-mono); font-size: 12px; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 0 8px; }
+.step h2 { font-size: 19px; font-weight: 600; }
+.step .hint { color: var(--muted); font-size: 13px; }
+
+.grid-in { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 16px; }
+@media (max-width: 860px) { .grid-in { grid-template-columns: 1fr; } }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs button { background: none; border: 0; padding: 6px 10px; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+
+.drop { border: 1.5px dashed var(--string); border-radius: var(--r); padding: 18px 14px; text-align: center; cursor: pointer; display: grid; gap: 6px; justify-items: center; transition: background .15s, border-color .15s; }
+.drop:hover, .drop.over { background: var(--accent-soft); border-color: var(--accent); }
+.drop strong { font-family: var(--f-display); font-size: 16px; }
+.drop span { color: var(--muted); font-size: 13px; }
+.thumbs { display: grid; gap: 6px; margin-top: 10px; }
+.thumb { display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: center; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; }
+.thumb[aria-current="true"] { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); }
+.thumb img { width: 54px; height: 38px; object-fit: cover; border-radius: 4px; background: #fff; }
+.thumb .meta { font-size: 12px; min-width: 0; }
+.thumb .meta b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; font-size: 13px; }
+.thumb .meta span { color: var(--muted); }
+.icon-btn { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 4px 6px; border-radius: 6px; }
+.icon-btn:hover { background: var(--line); color: var(--ink); }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 14px; }
+.fields .full { grid-column: 1 / -1; }
+label.f { display: grid; gap: 3px; font-size: 12px; color: var(--muted); text-transform: none; }
+label.f input, label.f select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; color: var(--ink); min-width: 0; width: 100%; }
+label.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+input[type=range] { accent-color: var(--accent); width: 100%; }
+
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { border-color: var(--string); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.actions { margin-top: 14px; }
+
+.preview { position: relative; background: #fff; border-radius: 8px; border: 1px solid var(--line); overflow: auto; max-height: 560px; min-height: 160px; }
+.preview canvas { display: block; max-width: none; }
+.preview .empty { padding: 40px 20px; color: #5d6763; text-align: center; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 2px solid; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+.status.err { color: var(--bad); }
+.badge { font-family: var(--f-mono); font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.sample-note { font-size: 12px; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 4px 8px; display: inline-block; }
+
+/* song settings */
+.song { display: grid; grid-template-columns: 2fr 1.4fr repeat(3, minmax(80px, 1fr)); gap: 10px; margin-bottom: 12px; }
+@media (max-width: 760px) { .song { grid-template-columns: 1fr 1fr; } }
+
+/* toolbar */
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; box-shadow: 0 6px 18px -14px rgba(0,0,0,.5); }
+.toolbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+.dur { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 3px 8px 3px 4px; display: inline-flex; align-items: center; gap: 2px; cursor: pointer; font-size: 12px; }
+.dur svg { width: 22px; height: 26px; }
+.dur:hover { border-color: var(--sel); }
+.dur.on { background: var(--sel-soft); border-color: var(--sel); }
+.dur kbd { font-family: var(--f-mono); font-size: 10px; color: var(--muted); margin-left: 2px; }
+.selinfo { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+.fxrow { flex-basis: 100%; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 2px; }
+.fxrow .lbl { font-family: var(--f-display); font-size: 13px; font-weight: 600; color: var(--accent); }
+.btn.fx { padding: 4px 9px; font-family: var(--f-mono); font-size: 13px; }
+.btn.fx.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.fxsel { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; font-size: 13px; max-width: 46vw; }
+
+@media (max-width: 700px) { .toolbar { position: static; } .toolbar .sep { display: none; } }
+
+/* measures */
+.measures { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.measure { border: 1px solid var(--line); border-radius: 8px; background: var(--bg); min-width: 0; max-width: 100%; }
+.measure header { display: flex; align-items: center; gap: 6px; padding: 4px 6px 2px 8px; font-size: 12px; }
+.measure header b { font-family: var(--f-mono); font-weight: 600; }
+.pill { font-family: var(--f-mono); font-size: 11px; padding: 0 6px; border-radius: 99px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.under { background: var(--warn-soft); color: var(--warn); }
+.pill.over { background: var(--bad-soft); color: var(--bad); }
+.measure header .sp { flex: 1; }
+.mbody { overflow-x: auto; padding: 2px 6px 6px; }
+.mgrid { display: flex; position: relative; }
+.mgrid::before { content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 34px; background: repeating-linear-gradient(to bottom, transparent 0 10px, var(--string) 10px 11px, transparent 11px 22px); pointer-events: none; opacity: .55; }
+.beat { display: grid; grid-auto-rows: 22px; min-width: 34px; padding: 0 2px; position: relative; border-radius: 6px; cursor: pointer; }
+.cw { display: flex; align-items: center; justify-content: center; height: 22px; position: relative; z-index: 1; }
+.cw.has-mk { justify-content: flex-start; gap: 1px; padding-left: 2px; }
+.mk { font-family: var(--f-mono); font-size: 10px; font-weight: 600; color: var(--accent); white-space: nowrap; line-height: 1; padding-right: 2px; }
+.beat.sel { background: var(--sel-soft); box-shadow: inset 0 0 0 1px var(--sel); }
+.beat.cur { box-shadow: inset 0 0 0 2px var(--sel); }
+.beat.playing { background: var(--accent-soft); }
+.cell { width: 28px; min-width: 0; height: 22px; border: 0; background: transparent; text-align: center; font-family: var(--f-mono); font-size: 13px; font-weight: 600; padding: 0; position: relative; z-index: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cell:not(:placeholder-shown) { background: var(--bg); border-radius: 4px; width: 24px; min-width: 24px; flex: none; }
+.cw.has-mk .cell { width: 2.4ch; min-width: 2.4ch; }
+.cell.ghost { color: var(--muted); font-style: italic; box-shadow: inset 0 0 0 1px var(--muted); border-radius: 9px; }
+.cell.focus-note { box-shadow: inset 0 0 0 1.5px var(--sel); }
+.beat.sel .cell:not(:placeholder-shown) { background: var(--sel-soft); }
+.cell.low { color: var(--warn); text-decoration: underline wavy var(--warn); }
+.cell:focus { outline: 1.5px solid var(--sel); border-radius: 4px; background: var(--panel) !important; }
+.beat .d { height: 34px; display: grid; place-items: center; color: var(--ink); }
+.beat .d svg { width: 22px; height: 30px; }
+.beat.rest .d { color: var(--muted); }
+.beat.rest .cell { visibility: hidden; }
+.beat .mod { position: absolute; bottom: 1px; right: 2px; font-family: var(--f-mono); font-size: 9px; color: var(--accent); }
+
+.export { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.small { font-size: 12px; color: var(--muted); }
+.kbd-help { font-size: 12px; color: var(--muted); margin-top: 10px; }
+.kbd-help kbd { font-family: var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--bg); font-size: 11px; }
+textarea#ascii { font-family: var(--f-mono); font-size: 12px; min-height: 200px; white-space: pre; overflow: auto; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="6" width="36" height="28" rx="6" fill="var(--accent)"/><g stroke="var(--accent-ink)" stroke-width="1.4" opacity=".85"><path d="M7 12h26M7 16h26M7 20h26M7 24h26M7 28h26"/></g><circle cx="20" cy="20" r="7.5" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/><text x="20" y="23.6" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="10" fill="var(--accent-ink)">5</text></svg>
+      <h1>TabLens</h1>
+    </div>
+    <p>แปลงรูปแท็บกีตาร์ (สแกน ภาพหน้าจอ หรือแท็บตัวอักษร) เป็นไฟล์ Guitar Pro (.gp5) — อ่านตัวเลขเฟรตให้อัตโนมัติ แล้วคุณกำหนดจังหวะเองก่อนส่งออก</p>
+  </header>
+
+  <section class="panel" aria-labelledby="s1">
+    <div class="step"><span class="n">1</span><h2 id="s1">นำเข้าแท็บ</h2><span class="hint">ภาพตรง คมชัด ได้ผลดีที่สุด · วางรูปด้วย Ctrl+V ได้</span></div>
+    <div class="grid-in">
+      <div>
+        <div class="tabs" role="tablist">
+          <button role="tab" id="tabImg" aria-selected="true">จากรูปภาพ</button>
+          <button role="tab" id="tabTxt" aria-selected="false">จากข้อความ</button>
+        </div>
+        <div id="paneImg">
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="เลือกรูปแท็บ">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+            <strong>ลากรูปมาวาง หรือคลิกเพื่อเลือก</strong>
+            <span>PNG / JPG หลายหน้าได้ เรียงตามลำดับ</span>
+          </div>
+          <input type="file" id="file" accept="image/*" multiple hidden>
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div id="paneTxt" hidden>
+          <textarea id="ascii" spellcheck="false" placeholder="e|---0---3---|&#10;B|---1---0---|&#10;G|---0---0---|&#10;D|---2---0---|&#10;A|---3---2---|&#10;E|-------3---|"></textarea>
+          <div class="row actions"><button class="btn primary" id="parseTxt">อ่านแท็บข้อความ</button></div>
+        </div>
+
+        <div class="fields">
+          <label class="f">จำนวนสาย
+            <select id="nStrings"><option value="6" selected>6 สาย (กีตาร์)</option><option value="7">7 สาย</option><option value="4">4 สาย (เบส / อูคูเลเล่)</option><option value="5">5 สาย (เบส)</option></select>
+          </label>
+          <label class="f">จูนสาย
+            <select id="tuning"></select>
+          </label>
+          <label class="f full">ความไวการอ่านหมึก <span id="sensVal" class="small"></span>
+            <input type="range" id="sens" min="-40" max="40" step="5" value="0">
+          </label>
+          <label class="chk full"><input type="checkbox" id="deskew" checked> แก้ภาพเอียงอัตโนมัติ</label>
+        </div>
+        <div class="row actions">
+          <button class="btn primary" id="runOcr" disabled>อ่านแท็บจากรูป</button>
+          <button class="btn" id="runAi" hidden title="ส่งรูปให้ Claude อ่าน ใช้โควตา Claude ของคุณ">อ่านด้วย Claude AI</button>
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </div>
+
+      <div style="min-width:0">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px">
+          <span class="small" id="prevTitle">ตัวอย่างผลการอ่าน</span>
+          <label class="chk small"><input type="checkbox" id="showOverlay" checked> แสดงกรอบที่อ่านได้</label>
+        </div>
+        <div class="preview" id="preview"><div class="empty">ยังไม่มีรูป</div></div>
+        <div class="legend">
+          <span><i style="border-color:#1f6f78"></i>เส้นสาย</span>
+          <span><i style="border-color:#2f7d4a"></i>ตัวเลขที่มั่นใจ</span>
+          <span><i style="border-color:#c58a00"></i>ควรตรวจ</span>
+          <span><i style="border-color:#b3362b"></i>เส้นกั้นห้อง</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="s2">
+    <div class="step"><span class="n">2</span><h2 id="s2">ตรวจตัวเลข และใส่จังหวะ</h2><span class="hint">คลิกเลือกโน้ต (Shift เลือกช่วง) แล้วกดค่าจังหวะ · แก้ตัวเลขได้ในช่องโดยตรง</span></div>
+    <div class="song">
+      <label class="f">ชื่อเพลง<input id="title" placeholder="Untitled"></label>
+      <label class="f">ศิลปิน<input id="artist"></label>
+      <label class="f">Tempo (BPM)<input id="tempo" type="number" min="20" max="400" value="90"></label>
+      <label class="f">ตัวบน<input id="tsNum" type="number" min="1" max="32" value="4"></label>
+      <label class="f">ตัวล่าง<select id="tsDen"><option>2</option><option selected>4</option><option>8</option><option>16</option></select></label>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <span id="durBtns" class="row" style="gap:4px"></span>
+      <span class="sep"></span>
+      <button class="btn" id="bDot" title="ประจุด (.)">จุด <kbd class="small">.</kbd></button>
+      <button class="btn" id="bTrip" title="สามพวง (T)">3 พวง <kbd class="small">T</kbd></button>
+      <button class="btn" id="bRest" title="ตัวหยุด (R)">ตัวหยุด <kbd class="small">R</kbd></button>
+      <span class="sep"></span>
+      <button class="btn" id="bIns" title="แทรกจังหวะว่างหลังตัวที่เลือก (I)">+ แทรก</button>
+      <button class="btn" id="bDel" title="ลบจังหวะที่เลือก (Delete)">ลบ</button>
+      <button class="btn" id="bSplit" title="ตัดห้องใหม่หลังโน้ตที่เลือก">ตัดห้อง</button>
+      <button class="btn" id="bMerge" title="รวมห้องนี้กับห้องถัดไป">รวมห้อง</button>
+      <span class="sep"></span>
+      <button class="btn" id="bEven" title="แบ่งจังหวะเท่ากันในห้องที่เลือก">แบ่งเท่ากัน</button>
+      <button class="btn" id="bSpace" title="เดาจากระยะห่างของตัวเลขในรูป">เดาจากระยะห่าง</button>
+      <span class="selinfo" id="selInfo"></span>
+      <div class="fxrow"><span class="lbl">เทคนิค</span><span id="fxBtns" class="row" style="gap:4px"></span><span class="selinfo" id="fxTarget"></span></div>
+    </div>
+    <div class="measures" id="measures"></div>
+    <div class="kbd-help">คีย์ลัด: <kbd>1</kbd>ตัวกลม <kbd>2</kbd>ตัวขาว <kbd>3</kbd>ตัวดำ <kbd>4</kbd>เขบ็ต 1 ชั้น <kbd>5</kbd>2 ชั้น <kbd>6</kbd>3 ชั้น · <kbd>.</kbd>จุด <kbd>T</kbd>3 พวง <kbd>R</kbd>ตัวหยุด · <kbd>←</kbd><kbd>→</kbd>เลื่อน <kbd>I</kbd>แทรก <kbd>Del</kbd>ลบ · พิมพ์ <kbd>x</kbd> ในช่องเพื่อเป็น dead note<br>
+      เทคนิค (คลิกตัวเลขก่อน แล้วกด): <kbd>H</kbd>/<kbd>P</kbd> hammer/pull <kbd>B</kbd> bend <kbd>V</kbd> vibrato <kbd>S</kbd> slide <kbd>M</kbd> palm mute <kbd>L</kbd> let ring <kbd>G</kbd> ghost <kbd>N</kbd> harmonic <kbd>A</kbd> accent · ขณะพิมพ์ในช่องเพิ่ม <kbd>T</kbd> tremolo <kbd>.</kbd> staccato <kbd>=</kbd> tie <kbd>/</kbd> slide <kbd>~</kbd> vibrato · ใส่หลายโน้ตพร้อมกัน: เลือกหลายจังหวะแล้วกดปุ่มเทคนิค</div>
+  </section>
+
+  <section class="panel" aria-labelledby="s3">
+    <div class="step"><span class="n">3</span><h2 id="s3">ฟังและส่งออก</h2></div>
+    <div class="export">
+      <button class="btn" id="play">▶ ฟัง</button>
+      <button class="btn primary" id="dl">ดาวน์โหลด .gp5</button>
+      <button class="btn" id="copyAscii">คัดลอกเป็นแท็บข้อความ</button>
+      <span class="small" id="dlNote"></span>
+    </div>
+    <p class="small" style="margin:10px 0 0;max-width:75ch">ไฟล์เป็นรูปแบบ Guitar Pro 5 เปิดได้ใน Guitar Pro 5–8, TuxGuitar, MuseScore และ Songsterr · ชื่อเพลงภาษาไทยจะถูกแทนด้วย ? เพราะรูปแบบ GP5 รองรับเฉพาะอักษรละติน</p>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/*GP5*/
+</script>
+<script>
+/*OCR*/
+</script>
+<script>
+/*APP*/
+</script>
