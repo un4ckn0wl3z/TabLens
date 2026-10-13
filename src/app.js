@@ -3,13 +3,14 @@
   const $ = id => document.getElementById(id);
   const WHOLE = 1920;
   const DURS = [1, 2, 4, 8, 16, 32];
-  const DUR_NAME = { 1: 'ตัวกลม', 2: 'ตัวขาว', 4: 'ตัวดำ', 8: 'เขบ็ต 1 ชั้น', 16: 'เขบ็ต 2 ชั้น', 32: 'เขบ็ต 3 ชั้น' };
+  const t = I18N.t;
+  const DUR_NAME = new Proxy({}, { get: (o, d) => t('dur.' + d) });
   const TUNINGS = {
     6: [['Standard E', [64, 59, 55, 50, 45, 40]], ['Drop D', [64, 59, 55, 50, 45, 38]], ['Eb Standard', [63, 58, 54, 49, 44, 39]],
       ['D Standard', [62, 57, 53, 48, 43, 38]], ['Drop C', [62, 57, 53, 48, 43, 36]], ['Open G', [62, 59, 55, 50, 43, 38]], ['Open D', [62, 57, 54, 50, 45, 38]], ['DADGAD', [62, 57, 55, 50, 45, 38]]],
     7: [['7-string B', [64, 59, 55, 50, 45, 40, 35]], ['7-string Drop A', [64, 59, 55, 50, 45, 40, 33]]],
-    4: [['เบส EADG', [43, 38, 33, 28]], ['เบส Drop D', [43, 38, 33, 26]], ['อูคูเลเล่ GCEA', [69, 64, 60, 67]]],
-    5: [['เบส 5 สาย BEADG', [43, 38, 33, 28, 23]]],
+    4: [['@tun.bass', [43, 38, 33, 28]], ['@tun.bassDropD', [43, 38, 33, 26]], ['@tun.uke', [69, 64, 60, 67]]],
+    5: [['@tun.bass5', [43, 38, 33, 28, 23]]],
   };
 
   // ---------------- state ----------------
@@ -33,12 +34,13 @@
   const flat = () => { const out = []; S.measures.forEach((m, mi) => m.beats.forEach((b, bi) => out.push({ mi, bi, b }))); return out; };
 
   function pushUndo() { undoStack.push(JSON.stringify(S.measures)); if (undoStack.length > 60) undoStack.shift(); }
-  function undo() { if (!undoStack.length) return toast('ไม่มีอะไรให้ย้อนกลับ'); S.measures = JSON.parse(undoStack.pop()); clampSel(); render(); save(); }
+  function undo() { if (!undoStack.length) return toast(t('toast.undoEmpty')); S.measures = JSON.parse(undoStack.pop()); clampSel(); render(); save(); }
 
   // ---------------- UI helpers ----------------
   let toastT;
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
-  function status(msg, err) { const s = $('status'); s.textContent = msg; s.classList.toggle('err', !!err); }
+  let lastStatus = null;
+  function status(msg, err) { lastStatus = [msg, err]; const s = $('status'); s.textContent = typeof msg === 'function' ? msg() : msg; s.classList.toggle('err', !!err); }
 
   function noteSvg(dur) {
     const filled = dur >= 4, stem = dur >= 2, flags = { 8: 1, 16: 2, 32: 3 }[dur] || 0;
@@ -58,12 +60,13 @@
 
 
   // ---------------- techniques (note effects) ----------------
-  const BEND_OPTS = [['', 'Bend —'], ['bend:50', 'Bend ½'], ['bend:100', 'Bend เต็ม (Full)'], ['bend:150', 'Bend 1½'], ['bend:200', 'Bend 2 เสียง'],
-    ['bendRelease:50', 'Bend ½ แล้วปล่อย'], ['bendRelease:100', 'Bend เต็ม แล้วปล่อย'], ['prebend:50', 'Prebend ½'], ['prebend:100', 'Prebend เต็ม'], ['prebendRelease:100', 'Prebend แล้วปล่อย']];
-  const SLIDE_OPTS = [['', 'Slide —'], ['legato', 'Slide ไปโน้ตถัดไป'], ['shift', 'Shift slide (ดีดซ้ำ)'], ['inBelow', 'Slide in จากล่าง'], ['inAbove', 'Slide in จากบน'], ['outUp', 'Slide out ขึ้น'], ['outDown', 'Slide out ลง']];
-  const HARM_OPTS = [['', 'Harmonic —'], ['N', 'Natural (NH)'], ['A', 'Artificial (AH)'], ['P', 'Pinch (PH)'], ['T', 'Tapped (TH)'], ['S', 'Semi (SH)']];
-  const TOGGLES = [['vib', '~', 'Vibrato', 'V'], ['hammer', 'h/p', 'Hammer-on / Pull-off ไปโน้ตถัดไป', 'H'], ['pm', 'P.M.', 'Palm mute', 'M'], ['lr', 'L.R.', 'Let ring', 'L'],
-    ['ghost', '( )', 'Ghost note', 'G'], ['tie', '⌒', 'Tie ต่อเสียงจากโน้ตก่อนหน้า', ''], ['trem', 'tr', 'Tremolo picking', ''], ['stac', '·', 'Staccato', ''], ['acc', '>', 'Accent (กดซ้ำเป็น heavy accent ^)', 'A']];
+  const L = k => ({ toString: () => t(k) }); // label resolved at render time
+  const BEND_OPTS = [['', L('bend.none')], ['bend:50', L('bend.50')], ['bend:100', L('bend.100')], ['bend:150', L('bend.150')], ['bend:200', L('bend.200')],
+    ['bendRelease:50', L('bendR.50')], ['bendRelease:100', L('bendR.100')], ['prebend:50', L('pre.50')], ['prebend:100', L('pre.100')], ['prebendRelease:100', L('preR.100')]];
+  const SLIDE_OPTS = [['', L('slide.none')], ['legato', L('slide.legato')], ['shift', L('slide.shift')], ['inBelow', L('slide.inBelow')], ['inAbove', L('slide.inAbove')], ['outUp', L('slide.outUp')], ['outDown', L('slide.outDown')]];
+  const HARM_OPTS = [['', L('harm.none')], ['N', 'Natural (NH)'], ['A', 'Artificial (AH)'], ['P', 'Pinch (PH)'], ['T', 'Tapped (TH)'], ['S', 'Semi (SH)']];
+  const TOGGLES = [['vib', '~', 'Vibrato', 'V'], ['hammer', 'h/p', L('tg.hammer'), 'H'], ['pm', 'P.M.', 'Palm mute', 'M'], ['lr', 'L.R.', 'Let ring', 'L'],
+    ['ghost', '( )', 'Ghost note', 'G'], ['tie', '⌒', L('tg.tie'), ''], ['trem', 'tr', 'Tremolo picking', ''], ['stac', '·', 'Staccato', ''], ['acc', '>', L('tg.acc'), 'A']];
   const FX_NAME = { vib: 'Vibrato', hammer: 'Hammer/Pull', pm: 'Palm mute', lr: 'Let ring', ghost: 'Ghost', tie: 'Tie', trem: 'Tremolo picking', stac: 'Staccato' };
   const fretNum = v => (v === '' || v == null || v === 'x') ? null : +v;
   function nextOnString(fi, s) { const F = flat(); for (let i = fi + 1; i < F.length; i++) { const b = F[i].b; if (!b.rest && b.frets[s] !== '' && b.frets[s] != null) return b.frets[s]; } return null; }
@@ -98,7 +101,7 @@
     const out = []; sel.forEach(f => { if (f.b.rest) return; f.b.frets.forEach((fr, s) => { if (fr !== '' && fr != null) out.push({ f, s }); }); }); return out;
   }
   function applyFx(fn) {
-    const T = fxTargets(); if (!T.length) { toast('เลือกโน้ตที่มีตัวเลขก่อน — คลิกที่ตัวเลขเพื่อเลือกเฉพาะโน้ตนั้น'); return; }
+    const T = fxTargets(); if (!T.length) { toast(t('toast.pickFretNote')); return; }
     pushUndo(); fn(T);
     T.forEach(({ f, s }) => { const o = f.b.fx && f.b.fx[s]; if (o && !Object.keys(o).length) f.b.fx[s] = null; });
     afterEdit(); refocusCell();
@@ -113,7 +116,7 @@
   function setFx(key, val) { applyFx(T => T.forEach(t => { const o = fxOf(t.f.b, t.s); if (val == null || val === '') delete o[key]; else o[key] = val; })); }
   function setBend(v) { if (!v) return setFx('bend', null); const [type, amt] = v.split(':'); setFx('bend', { type, amt: +amt }); }
   function cycle(key, opts) {
-    const T = fxTargets(); if (!T.length) return toast('เลือกโน้ตที่มีตัวเลขก่อน');
+    const T = fxTargets(); if (!T.length) return toast(t('toast.pickFretShort'));
     const o = fxGet(T[0].f.b, T[0].s) || {};
     const cur = key === 'bend' ? (o.bend ? o.bend.type + ':' + o.bend.amt : '') : (o[key] || '');
     const vals = opts.map(x => x[0]); const nv = vals[(vals.indexOf(cur) + 1) % vals.length];
@@ -130,7 +133,7 @@
     mk('fxSlide', SLIDE_OPTS, 'Slide (S)', v => setFx('slide', v));
     mk('fxHarm', HARM_OPTS, 'Harmonic (N)', v => setFx('harm', v));
     TOGGLES.forEach(([k, lbl, title, key]) => { const b = document.createElement('button'); b.className = 'btn fx'; b.dataset.fx = k; b.title = title + (key ? ` (${key})` : ''); b.textContent = lbl; b.onmousedown = e => e.preventDefault(); b.onclick = () => toggleFx(k); bar.appendChild(b); });
-    const clr = document.createElement('button'); clr.className = 'btn fx'; clr.textContent = 'ล้างเทคนิค'; clr.title = 'ลบเทคนิคทั้งหมดของโน้ตที่เลือก'; clr.onmousedown = e => e.preventDefault();
+    const clr = document.createElement('button'); clr.className = 'btn fx'; clr.dataset.i18n = 'fx.clear'; clr.dataset.i18nTitle = 'fx.clear.title'; clr.textContent = t('fx.clear'); clr.title = t('fx.clear.title'); clr.onmousedown = e => e.preventDefault();
     clr.onclick = () => applyFx(T => T.forEach(t => { t.f.b.fx[t.s] = null; })); bar.appendChild(clr);
   }
   function updateFxBar() {
@@ -141,13 +144,14 @@
     $('fxBend').value = one.bend && same('bend') ? one.bend.type + ':' + one.bend.amt : '';
     if ($('fxBend').selectedIndex < 0) $('fxBend').value = '';
     $('fxSlide').value = same('slide') ? one.slide || '' : ''; $('fxHarm').value = same('harm') ? one.harm || '' : '';
-    $('fxTarget').textContent = !T.length ? 'เลือกโน้ตก่อน' : T.length === 1 ? `โน้ตสาย ${T[0].s + 1} เฟรต ${T[0].f.b.frets[T[0].s]}` : `${T.length} โน้ต`;
+    $('fxTarget').textContent = !T.length ? t('fx.target.none') : T.length === 1 ? t('fx.target.one', { s: T[0].s + 1, f: T[0].f.b.frets[T[0].s] }) : t('fx.target.many', { n: T.length });
   }
 
   // ---------------- tuning select ----------------
   function fillTunings() {
-    const sel = $('tuning'); sel.innerHTML = '';
-    TUNINGS[N()].forEach(([name], i) => { const o = document.createElement('option'); o.value = i; o.textContent = name; sel.appendChild(o); });
+    const sel = $('tuning'); const keep = sel.value; sel.innerHTML = '';
+    TUNINGS[N()].forEach(([name], i) => { const o = document.createElement('option'); o.value = i; o.textContent = name[0] === '@' ? t(name.slice(1)) : name; sel.appendChild(o); });
+    if (keep && +keep < TUNINGS[N()].length) sel.value = keep;
   }
 
   // ---------------- images ----------------
@@ -158,8 +162,8 @@
     let pending = list.length;
     list.forEach(f => {
       const url = URL.createObjectURL(f); const img = new Image();
-      img.onload = () => { S.images.push({ name: f.name || 'รูปที่วาง', url, src: img, result: null }); if (--pending === 0) { S.view = S.images.length - 1; renderThumbs(); drawPreview(); $('runOcr').disabled = false; status(`เพิ่มรูปแล้ว ${S.images.length} รูป — กด “อ่านแท็บจากรูป”`); } };
-      img.onerror = () => { --pending; status('เปิดไฟล์รูปนี้ไม่ได้: ' + f.name, true); };
+      img.onload = () => { S.images.push({ name: f.name || t('img.pasted'), url, src: img, result: null }); if (--pending === 0) { S.view = S.images.length - 1; renderThumbs(); drawPreview(); $('runOcr').disabled = false; { const n = S.images.length; status(() => t('st.added', { n })); } } };
+      img.onerror = () => { --pending; status(() => t('st.openFail', { name: f.name }), true); };
       img.src = url;
     });
   }
@@ -169,9 +173,9 @@
     S.images.forEach((im, i) => {
       const el = document.createElement('div'); el.className = 'thumb'; el.setAttribute('aria-current', i === S.view);
       const r = im.result;
-      const info = r ? `${r.staves.length} บรรทัด · ${r.staves.reduce((s, st) => s + st.segs.length, 0)} ห้อง` : 'ยังไม่ได้อ่าน';
-      el.innerHTML = `<img alt=""><div class="meta"><b></b><span>${info}</span></div><button class="icon-btn" title="นำรูปออก" aria-label="นำรูปออก">✕</button>`;
-      el.querySelector('img').src = im.url; el.querySelector('b').textContent = im.name;
+      const info = r ? t('img.info', { st: r.staves.length, m: r.staves.reduce((s, st) => s + st.segs.length, 0) }) : t('img.notRead');
+      el.innerHTML = `<img alt=""><div class="meta"><b></b><span>${info}</span></div><button class="icon-btn" title="${t('img.remove')}" aria-label="${t('img.remove')}">✕</button>`;
+      el.querySelector('img').src = im.url; el.querySelector('b').textContent = im.sample ? t('img.sample') : im.name;
       el.onclick = e => { if (e.target.closest('button')) return; S.view = i; renderThumbs(); drawPreview(); };
       el.querySelector('button').onclick = () => { S.images.splice(i, 1); S.view = Math.max(0, Math.min(S.view, S.images.length - 1)); $('runOcr').disabled = !S.images.length; renderThumbs(); drawPreview(); };
       box.appendChild(el);
@@ -183,13 +187,13 @@
   const pv = document.createElement('canvas');
   function drawPreview() {
     const box = $('preview'); const im = S.images[S.view];
-    if (!im) { box.innerHTML = '<div class="empty">ยังไม่มีรูป</div>'; return; }
+    if (!im) { box.innerHTML = `<div class="empty">${t('prev.empty')}</div>`; return; }
     if (!box.contains(pv)) { box.innerHTML = ''; box.appendChild(pv); }
     const r = im.result; const src = r ? r.canvas : im.src;
     const W = r ? r.width : im.src.width, H = r ? r.height : im.src.height;
     pv.width = W; pv.height = H; pv.style.width = '100%';
     const ctx = pv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(src, 0, 0, W, H);
-    $('prevTitle').textContent = im.name + (r && r.angle ? ` · หมุนแก้ ${r.angle}°` : '');
+    $('prevTitle').textContent = (im.sample ? t('img.sample') : im.name) + (r && r.angle ? ' · ' + t('prev.rotated', { a: r.angle }) : '');
     if (!r || !$('showOverlay').checked) return;
     const lw = Math.max(1.5, W / 900);
     for (const st of r.staves) {
@@ -239,7 +243,7 @@
     const all = []; let notes = 0, low = 0;
     try {
       for (let i = 0; i < S.images.length; i++) {
-        status(`กำลังอ่านรูป ${i + 1}/${S.images.length}…`);
+        status(t('st.reading', { i: i + 1, n: S.images.length }));
         await new Promise(r => setTimeout(r, 30));
         const r = TabOCR.read(S.images[i].src, { strings: N(), sensitivity: +$('sens').value, deskew: $('deskew').checked });
         S.images[i].result = r;
@@ -251,9 +255,9 @@
       S.measures = all; S.measures.forEach(fillEven);
       S.sel = all.length ? { a: 0, b: 0 } : null;
       renderThumbs(); drawPreview(); render(); save();
-      if (!all.length) status(`ไม่พบบรรทัดแท็บ ${N()} เส้นในรูป — ลองปรับความไว ครอปให้เหลือเฉพาะแท็บ หรือใช้ “อ่านด้วย Claude AI”`, true);
-      else status(`อ่านได้ ${all.length} ห้อง ${notes} ตัวเลข` + (low ? ` · ${low} ตัวควรตรวจ (ขีดเส้นใต้สีเหลือง)` : '') + ' · จังหวะเริ่มต้นแบ่งเท่ากันไว้ให้แล้ว');
-    } catch (e) { console.error(e); status('อ่านรูปไม่สำเร็จ: ' + e.message, true); }
+      if (!all.length) { const n = N(); status(() => t('st.noStaff', { n }), true); }
+      else status(() => t('st.read', { m: all.length, n: notes }) + (low ? t('st.readLow', { n: low }) : '') + t('st.readTail'));
+    } catch (e) { console.error(e); status(() => t('st.ocrFail', { msg: e.message }), true); }
     $('runOcr').disabled = false;
   }
 
@@ -280,7 +284,7 @@
     const all = [];
     try {
       for (let i = 0; i < S.images.length; i++) {
-        status(`Claude กำลังอ่านรูป ${i + 1}/${S.images.length}… (อาจใช้เวลา 30–90 วินาที)`);
+        { const ii = i + 1, nn = S.images.length; status(() => t('st.aiReading', { i: ii, n: nn })); }
         const blob = await imageBlob(S.images[i].src);
         const prompt = `The attached image is a page of ${n}-string guitar/bass tablature (it may be printed tab, a Guitar Pro / Songsterr screenshot, or ASCII text tab).
 Transcribe EVERY tab staff on the page, top to bottom, left to right, into JSON.
@@ -324,10 +328,10 @@ Return ONLY JSON of this shape:
       }
       if (!all.length) throw { code: 'empty' };
       pushUndo(); S.measures = all; S.sel = { a: 0, b: 0 }; render(); save();
-      status(`Claude อ่านได้ ${all.length} ห้อง · ตรวจตัวเลขและจังหวะอีกครั้งก่อนส่งออก`);
+      status(() => t('st.aiDone', { m: all.length }));
     } catch (e) {
-      const m = { not_granted: 'ไม่ได้อนุญาตให้ใช้ Claude', rate_limited: 'ใช้งานถี่เกินไป ลองใหม่อีกสักครู่', cancelled: 'ยกเลิกแล้ว', empty: 'Claude ไม่พบแท็บในรูป' }[e && e.code];
-      status(m || ('Claude อ่านไม่สำเร็จ' + (e && e.message ? ': ' + e.message : '')), true);
+      const m = ['not_granted', 'rate_limited', 'cancelled', 'empty'].includes(e && e.code) ? t('ai.' + e.code) : null;
+      status(m || (t('ai.fail') + (e && e.message ? ': ' + e.message : '')), true);
       if (e && e.code === 'not_granted') $('runAi').hidden = true;
     }
     $('runAi').disabled = false;
@@ -458,8 +462,8 @@ Return ONLY JSON of this shape:
   function selectedMeasures() { return [...new Set(selected().map(f => f.mi))]; }
 
   // ---------------- edit ops ----------------
-  function applyDur(d) { const sel = selected(); if (!sel.length) return toast('เลือกโน้ตก่อน'); pushUndo(); sel.forEach(f => f.b.dur = d); afterEdit(); }
-  function toggle(key) { const sel = selected(); if (!sel.length) return toast('เลือกโน้ตก่อน'); pushUndo(); const v = !sel.every(f => f.b[key]); sel.forEach(f => f.b[key] = v); afterEdit(); }
+  function applyDur(d) { const sel = selected(); if (!sel.length) return toast(t('toast.pickNote')); pushUndo(); sel.forEach(f => f.b.dur = d); afterEdit(); }
+  function toggle(key) { const sel = selected(); if (!sel.length) return toast(t('toast.pickNote')); pushUndo(); const v = !sel.every(f => f.b[key]); sel.forEach(f => f.b[key] = v); afterEdit(); }
   function insertBeat() {
     pushUndo();
     if (!S.measures.length) { S.measures.push({ beats: [newBeat(4)] }); S.sel = { a: 0, b: 0 }; return afterEdit(); }
@@ -476,18 +480,18 @@ Return ONLY JSON of this shape:
   }
   function splitMeasure() {
     const F = flat(); const [, b] = selRange(); const f = F[b]; if (!f) return;
-    const m = S.measures[f.mi]; if (f.bi >= m.beats.length - 1) return toast('เลือกโน้ตที่ไม่ใช่ตัวสุดท้ายของห้อง');
+    const m = S.measures[f.mi]; if (f.bi >= m.beats.length - 1) return toast(t('toast.notLast'));
     pushUndo(); S.measures.splice(f.mi + 1, 0, { beats: m.beats.splice(f.bi + 1) }); afterEdit();
   }
   function mergeMeasure() {
-    const F = flat(); const [, b] = selRange(); const f = F[b]; if (!f || f.mi >= S.measures.length - 1) return toast('ไม่มีห้องถัดไปให้รวม');
+    const F = flat(); const [, b] = selRange(); const f = F[b]; if (!f || f.mi >= S.measures.length - 1) return toast(t('toast.noNext'));
     pushUndo(); S.measures[f.mi].beats.push(...S.measures[f.mi + 1].beats); S.measures.splice(f.mi + 1, 1); afterEdit();
   }
   function rhythmTool(kind) {
-    const ms = selectedMeasures(); if (!ms.length) return toast('เลือกโน้ตในห้องที่ต้องการก่อน');
+    const ms = selectedMeasures(); if (!ms.length) return toast(t('toast.pickMeasure'));
     pushUndo(); let fail = 0;
     ms.forEach(i => { if (kind === 'even') fillEven(S.measures[i]); else if (!guessSpacing(S.measures[i])) fail++; });
-    if (fail) toast('ห้องที่ไม่ได้มาจากรูปเดาจากระยะห่างไม่ได้');
+    if (fail) toast(t('toast.noSpacing'));
     afterEdit();
   }
   function afterEdit() { clampSel(); render(); save(); }
@@ -498,14 +502,14 @@ Return ONLY JSON of this shape:
     const box = $('measures'); const n = N(); const [sa, sb] = selRange(); let fi = 0;
     const frag = document.createDocumentFragment();
     if (!S.measures.length) {
-      box.innerHTML = '<p class="small" style="margin:6px 2px">ยังไม่มีโน้ต — อ่านแท็บจากรูปหรือข้อความด้านบน หรือกด “+ แทรก” เพื่อเริ่มเขียนเอง</p>';
+      box.innerHTML = `<p class="small" style="margin:6px 2px">${t('ed.empty')}</p>`;
       updateSelInfo(); return;
     }
     S.measures.forEach((m, mi) => {
       const sum = m.beats.reduce((s, b) => s + ticks(b), 0);
       const st = Math.abs(sum - cap()) < 1 ? 'ok' : sum < cap() ? 'under' : 'over';
       const el = document.createElement('div'); el.className = 'measure'; el.dataset.mi = mi;
-      el.innerHTML = `<header><b>${mi + 1}</b><span class="pill ${st}" title="ผลรวมจังหวะในห้อง">${fmtQ(sum)}/${tsNum()}${st === 'ok' ? ' ✓' : st === 'under' ? ' ขาด' : ' เกิน'}</span><span class="sp"></span></header><div class="mbody"><div class="mgrid"></div></div>`;
+      el.innerHTML = `<header><b>${mi + 1}</b><span class="pill ${st}" title="${t('ed.sumTitle')}">${fmtQ(sum)}/${tsNum()}${st === 'ok' ? ' ✓' : st === 'under' ? t('ed.under') : t('ed.over')}</span><span class="sp"></span></header><div class="mbody"><div class="mgrid"></div></div>`;
       const grid = el.querySelector('.mgrid');
       m.beats.forEach((b, bi) => {
         const idx = fi++;
@@ -515,14 +519,14 @@ Return ONLY JSON of this shape:
         for (let s = 0; s < n; s++) {
           const cw = document.createElement('div'); cw.className = 'cw';
           const inp = document.createElement('input'); inp.className = 'cell' + (b.low.includes(s) ? ' low' : ''); inp.value = b.frets[s] || ''; inp.placeholder = ' ';
-          inp.maxLength = 2; inp.size = 2; inp.dataset.s = s; inp.setAttribute('aria-label', `ห้อง ${mi + 1} จังหวะ ${bi + 1} สาย ${s + 1}`); inp.inputMode = 'numeric';
+          inp.maxLength = 2; inp.size = 2; inp.dataset.s = s; inp.setAttribute('aria-label', t('ed.cellAria', { m: mi + 1, b: bi + 1, s: s + 1 })); inp.inputMode = 'numeric';
           if (S.selStr === s && idx === (S.sel && S.sel.b) && S.sel.a === S.sel.b) inp.classList.add('focus-note');
           cw.appendChild(inp);
           const mk = !b.rest && b.frets[s] !== '' ? markOf(idx, b, s) : null;
           if (mk) { if (mk.ghost) inp.classList.add('ghost'); if (mk.short) { const sp = document.createElement('span'); sp.className = 'mk'; sp.textContent = mk.short; cw.appendChild(sp); cw.classList.add('has-mk'); } cw.title = mk.long; }
           be.appendChild(cw);
         }
-        const d = document.createElement('div'); d.className = 'd'; d.title = (b.rest ? 'ตัวหยุด ' : '') + DUR_NAME[b.dur] + (b.dot ? ' ประจุด' : '') + (b.tup ? ' สามพวง' : '');
+        const d = document.createElement('div'); d.className = 'd'; d.title = (b.rest ? t('ed.rest') : '') + DUR_NAME[b.dur] + (b.dot ? t('ed.dotted') : '') + (b.tup ? t('ed.triplet') : '');
         d.innerHTML = (b.rest ? restSvg(b.dur) : noteSvg(b.dur)) + (b.dot || b.tup ? `<span class="mod">${b.dot ? '•' : ''}${b.tup ? '3' : ''}</span>` : '');
         be.appendChild(d);
         grid.appendChild(be);
@@ -534,7 +538,7 @@ Return ONLY JSON of this shape:
   }
   function updateSelInfo() {
     const sel = selected();
-    $('selInfo').textContent = sel.length ? `เลือก ${sel.length} จังหวะ · ห้อง ${sel[0].mi + 1}${sel.length > 1 && sel[sel.length - 1].mi !== sel[0].mi ? '–' + (sel[sel.length - 1].mi + 1) : ''}` : 'ยังไม่ได้เลือก';
+    $('selInfo').textContent = sel.length ? t('sel.info', { n: sel.length, m: (sel[0].mi + 1) + (sel.length > 1 && sel[sel.length - 1].mi !== sel[0].mi ? '–' + (sel[sel.length - 1].mi + 1) : '') }) : t('sel.none');
     const cur = sel.length === 1 ? sel[0].b : null;
     document.querySelectorAll('.dur').forEach(el => el.classList.toggle('on', !!cur && +el.dataset.d === cur.dur));
     updateFxBar();
@@ -581,7 +585,7 @@ Return ONLY JSON of this shape:
     const fxKey = { h: () => toggleFx('hammer'), p: () => toggleFx('hammer'), b: () => cycle('bend', BEND_OPTS.slice(0, 6)), v: () => toggleFx('vib'), '~': () => toggleFx('vib'),
       s: () => cycle('slide', SLIDE_OPTS), '/': () => setFx('slide', 'legato'), '\\': () => setFx('slide', 'legato'), m: () => toggleFx('pm'), l: () => toggleFx('lr'), g: () => toggleFx('ghost'), '(': () => toggleFx('ghost'),
       n: () => cycle('harm', HARM_OPTS), t: () => toggleFx('trem'), a: () => toggleFx('acc'), '>': () => toggleFx('acc'), '.': () => toggleFx('stac'), '=': () => toggleFx('tie') }[k];
-    if (fxKey && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); if (inp.value === '') { toast('พิมพ์ตัวเลขเฟรตก่อน แล้วค่อยกดตัวอักษรเทคนิค'); return; } S.sel = { a: i, b: i }; S.selStr = s; fxKey(); return; }
+    if (fxKey && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); if (inp.value === '') { toast(t('toast.typeFretFirst')); return; } S.sel = { a: i, b: i }; S.selStr = s; fxKey(); return; }
     if (e.key === 'ArrowUp' && s > 0) { e.preventDefault(); focusCell(i, s - 1); }
     else if (e.key === 'ArrowDown' && s < N() - 1) { e.preventDefault(); focusCell(i, s + 1); }
     else if (e.key === 'ArrowLeft' && inp.selectionStart === 0) { e.preventDefault(); focusCell(i - 1, s); }
@@ -626,7 +630,7 @@ Return ONLY JSON of this shape:
   const NH_INT = { 12: 12, 24: 24, 7: 19, 19: 19, 5: 24, 4: 28, 9: 28, 16: 28, 3: 31, 2: 36 };
   function play() {
     if (playing) return stop();
-    const F = flat(); if (!F.length) return toast('ยังไม่มีโน้ตให้ฟัง');
+    const F = flat(); if (!F.length) return toast(t('toast.nothingToPlay'));
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     actx.resume && actx.resume();
     const tun = tuning(); const bpm = Math.max(20, +$('tempo').value || 90); const qsec = 60 / bpm;
@@ -689,11 +693,11 @@ Return ONLY JSON of this shape:
     }
     Object.keys(act).forEach(s => release(s, act[s].lr ? t + 1.2 : Math.min(t, act[s].endT)));
     timers.push(setTimeout(stop, (t - actx.currentTime) * 1000 + 600));
-    playing = { timers, srcs }; $('play').textContent = '■ หยุด';
+    playing = { timers, srcs }; $('play').textContent = t('btn.stop'); $('play').dataset.i18n = 'btn.stop';
   }
   function stop() {
     if (!playing) return; playing.timers.forEach(clearTimeout); playing.srcs.forEach(s => { try { s.stop(); } catch (e) { } });
-    playing = null; $('play').textContent = '▶ ฟัง'; document.querySelectorAll('.beat.playing').forEach(x => x.classList.remove('playing'));
+    playing = null; $('play').textContent = t('btn.play'); $('play').dataset.i18n = 'btn.play'; document.querySelectorAll('.beat.playing').forEach(x => x.classList.remove('playing'));
   }
 
   // ---------------- export ----------------
@@ -744,17 +748,17 @@ Return ONLY JSON of this shape:
     if (downloads) {
       try {
         await downloads.save({ filename: name + '.zip', data: zipOne(name + '.gp5', data) });
-        toast('บันทึกแล้ว — แตกไฟล์ zip เพื่อได้ ' + name + '.gp5');
+        toast(t('toast.saved', { name }));
       } catch (e) {
-        if (e && e.code === 'declined') toast('ยกเลิกการบันทึก');
-        else if (e && e.code === 'rate_limited') toast('มีหน้าต่างบันทึกเปิดอยู่แล้ว');
-        else toast('บันทึกไฟล์ไม่ได้ในมุมมองนี้');
+        if (e && e.code === 'declined') toast(t('toast.declined'));
+        else if (e && e.code === 'rate_limited') toast(t('toast.saveBusy'));
+        else toast(t('toast.saveFail'));
       }
     } else {
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' })); a.download = name + '.gp5';
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     }
-    if (bad) setTimeout(() => toast(`หมายเหตุ: มี ${bad} ห้องที่จังหวะไม่ครบ/เกิน Guitar Pro จะแสดงเป็นห้องไม่สมบูรณ์`), 2800);
+    if (bad) setTimeout(() => toast(t('toast.badMeasures', { n: bad })), 2800);
   }
   function asciiTab() {
     const n = N(); const names = tuning().map(m => ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][m % 12]);
@@ -792,9 +796,9 @@ Return ONLY JSON of this shape:
     return lines.join('\n');
   }
   async function copyAscii() {
-    const txt = asciiTab(); if (!S.measures.length) return toast('ยังไม่มีโน้ต');
-    try { await navigator.clipboard.writeText(txt); toast('คัดลอกแท็บข้อความแล้ว'); }
-    catch (e) { $('tabTxt').click(); const ta = $('ascii'); ta.value = txt; ta.focus(); ta.select(); toast('คัดลอกอัตโนมัติไม่ได้ — เลือกข้อความในช่องแล้วกด Ctrl+C'); }
+    const txt = asciiTab(); if (!S.measures.length) return toast(t('toast.noNotes'));
+    try { await navigator.clipboard.writeText(txt); toast(t('toast.copied')); }
+    catch (e) { $('tabTxt').click(); const ta = $('ascii'); ta.value = txt; ta.focus(); ta.select(); toast(t('toast.copyFail')); }
   }
 
   // ---------------- draft persistence (this browser only) ----------------
@@ -850,7 +854,7 @@ Return ONLY JSON of this shape:
   }
   function loadSample() {
     const c = makeSample();
-    S.images = [{ name: 'แท็บตัวอย่าง', url: c.toDataURL(), src: c, result: null, sample: true }]; S.view = 0; S.isSample = true;
+    S.images = [{ name: 'Sample', url: c.toDataURL(), src: c, result: null, sample: true }]; S.view = 0; S.isSample = true;
     $('title').value = 'Example riff';
     renderThumbs(); $('runOcr').disabled = false;
     try {
@@ -858,24 +862,37 @@ Return ONLY JSON of this shape:
       S.measures = resultToMeasures(r, 0); S.measures.forEach(fillEven); S.sel = S.measures.length ? { a: 0, b: 0 } : null;
     } catch (e) { console.error(e); }
     renderThumbs(); render();
-    status('นี่คือแท็บตัวอย่างที่อ่านให้ดูแล้ว — เพิ่มรูปของคุณเพื่อเริ่มงานจริง');
+    status(() => t('st.sample'));
   }
 
   // ---------------- wire up ----------------
+  let sensLbl = () => { };
   function init() {
+    I18N.set(I18N.lang); I18N.apply();
     fillTunings();
     const db = $('durBtns');
     [[1, '1'], [2, '2'], [4, '3'], [8, '4'], [16, '5'], [32, '6']].forEach(([d, k]) => {
-      const b = document.createElement('button'); b.className = 'dur'; b.dataset.d = d; b.title = DUR_NAME[d] + ` (${k})`; b.setAttribute('aria-label', DUR_NAME[d]);
+      const b = document.createElement('button'); b.className = 'dur'; b.dataset.d = d; b.dataset.k = k; b.title = DUR_NAME[d] + ` (${k})`; b.setAttribute('aria-label', DUR_NAME[d]);
       b.innerHTML = noteSvg(d) + `<kbd>${k}</kbd>`; b.onclick = () => applyDur(d); db.appendChild(b);
     });
     buildFxBar();
+    const markLang = () => document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === I18N.lang));
+    markLang();
+    document.querySelectorAll('.lang button').forEach(b => b.onclick = () => {
+      if (b.dataset.lang === I18N.lang) return;
+      I18N.set(b.dataset.lang); I18N.apply(); markLang();
+      if (playing) { $('play').textContent = t('btn.stop'); }
+      fillTunings(); $('fxBtns').innerHTML = ''; buildFxBar();
+      document.querySelectorAll('.dur').forEach(el => { el.title = DUR_NAME[el.dataset.d] + ` (${el.dataset.k})`; el.setAttribute('aria-label', DUR_NAME[el.dataset.d]); });
+      sensLbl(); renderThumbs(); render(); drawPreview();
+      if (lastStatus) status(...lastStatus);
+    });
     $('bDot').onclick = () => toggle('dot'); $('bTrip').onclick = () => toggle('tup'); $('bRest').onclick = () => toggle('rest');
     $('bIns').onclick = insertBeat; $('bDel').onclick = deleteBeats; $('bSplit').onclick = splitMeasure; $('bMerge').onclick = mergeMeasure;
     $('bEven').onclick = () => rhythmTool('even'); $('bSpace').onclick = () => rhythmTool('space');
     $('runOcr').onclick = runOcr; $('runAi').onclick = runAi; $('play').onclick = play; $('dl').onclick = download; $('copyAscii').onclick = copyAscii;
     $('showOverlay').onchange = drawPreview;
-    const sensLbl = () => { const v = +$('sens').value; $('sensVal').textContent = v === 0 ? '(ปกติ)' : v > 0 ? `(+${v} อ่านหมึกจางได้มากขึ้น)` : `(${v} ตัดหมึกจางทิ้ง)`; };
+    sensLbl = () => { const v = +$('sens').value; $('sensVal').textContent = v === 0 ? t('sens.normal') : v > 0 ? t('sens.more', { v }) : t('sens.less', { v }); };
     $('sens').oninput = sensLbl; sensLbl();
     $('nStrings').onchange = () => {
       fillTunings(); const n = N();
@@ -889,9 +906,9 @@ Return ONLY JSON of this shape:
     $('tabImg').onclick = () => setTab(true); $('tabTxt').onclick = () => setTab(false);
     $('parseTxt').onclick = () => {
       const ms = parseAscii($('ascii').value);
-      if (!ms.length) return status(`ไม่พบแท็บ ${N()} บรรทัดในข้อความ — ตรวจว่าแต่ละสายขึ้นบรรทัดใหม่และใช้ขีด -`, true);
+      if (!ms.length) { const n = N(); return status(() => t('st.noTxt', { n }), true); }
       pushUndo(); ms.forEach(fillEven); S.measures = ms; S.sel = { a: 0, b: 0 }; S.isSample = false; render(); save();
-      status(`อ่านได้ ${ms.length} ห้อง จากแท็บข้อความ`);
+      status(() => t('st.txtRead', { m: ms.length }));
     };
     // file input / drop / paste
     const drop = $('drop'), file = $('file');
@@ -904,14 +921,14 @@ Return ONLY JSON of this shape:
       const files = [...(e.clipboardData && e.clipboardData.files || [])];
       if (files.length) { e.preventDefault(); addFiles(files); return; }
       const txt = e.clipboardData && e.clipboardData.getData('text');
-      if (txt && !e.target.matches('input, textarea') && /-{3,}/.test(txt)) { $('tabTxt').click(); $('ascii').value = txt; status('วางแท็บข้อความแล้ว — กด “อ่านแท็บข้อความ”'); }
+      if (txt && !e.target.matches('input, textarea') && /-{3,}/.test(txt)) { $('tabTxt').click(); $('ascii').value = txt; status(() => t('st.pastedTxt')); }
     });
 
-    if (restore()) { render(); status('กู้คืนงานล่าสุดจากเบราว์เซอร์นี้แล้ว · เพิ่มรูปใหม่เพื่อเริ่มงานใหม่'); }
+    if (restore()) { render(); status(() => t('st.restored')); }
     else loadSample();
 
     if (window.claude && claude.use) {
-      claude.use('downloads').then(d => { downloads = d; if (d) $('dlNote').textContent = 'ไฟล์จะถูกบีบเป็น .zip (มี .gp5 อยู่ข้างใน)'; }).catch(() => { });
+      claude.use('downloads').then(d => { downloads = d; if (d) { $('dlNote').dataset.i18n = 'dl.zipNote'; $('dlNote').textContent = t('dl.zipNote'); } }).catch(() => { });
       initSample();
     }
   }

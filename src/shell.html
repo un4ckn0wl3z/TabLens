@@ -38,6 +38,8 @@
   color-scheme: dark; }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
 .wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 80px; display: grid; gap: 18px; }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
@@ -49,7 +51,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .logo { display: flex; align-items: center; gap: 10px; }
 .logo svg { width: 38px; height: 38px; }
 .logo h1 { font-size: 26px; font-weight: 700; }
-.top p { margin: 0; color: var(--muted); max-width: 62ch; }
+.top p { margin: 0; color: var(--muted); max-width: 62ch; flex: 1 1 320px; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; margin-left: auto; }
+.lang button { border: 0; background: var(--panel); padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--muted); }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 
 /* panels */
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
@@ -175,111 +180,116 @@ textarea#ascii { font-family: var(--f-mono); font-size: 12px; min-height: 200px;
       <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="6" width="36" height="28" rx="6" fill="var(--accent)"/><g stroke="var(--accent-ink)" stroke-width="1.4" opacity=".85"><path d="M7 12h26M7 16h26M7 20h26M7 24h26M7 28h26"/></g><circle cx="20" cy="20" r="7.5" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/><text x="20" y="23.6" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="10" fill="var(--accent-ink)">5</text></svg>
       <h1>TabLens</h1>
     </div>
-    <p>แปลงรูปแท็บกีตาร์ (สแกน ภาพหน้าจอ หรือแท็บตัวอักษร) เป็นไฟล์ Guitar Pro (.gp5) — อ่านตัวเลขเฟรตให้อัตโนมัติ แล้วคุณกำหนดจังหวะเองก่อนส่งออก</p>
+    <p data-i18n="app.tagline"></p>
+    <div class="lang" role="group" aria-label="Language / ภาษา">
+      <button type="button" data-lang="th" lang="th">ไทย</button><button type="button" data-lang="en" lang="en">EN</button>
+    </div>
   </header>
 
   <section class="panel" aria-labelledby="s1">
-    <div class="step"><span class="n">1</span><h2 id="s1">นำเข้าแท็บ</h2><span class="hint">ภาพตรง คมชัด ได้ผลดีที่สุด · วางรูปด้วย Ctrl+V ได้</span></div>
+    <div class="step"><span class="n">1</span><h2 id="s1" data-i18n="s1.title"></h2><span class="hint" data-i18n="s1.hint"></span></div>
     <div class="grid-in">
       <div>
         <div class="tabs" role="tablist">
-          <button role="tab" id="tabImg" aria-selected="true">จากรูปภาพ</button>
-          <button role="tab" id="tabTxt" aria-selected="false">จากข้อความ</button>
+          <button role="tab" id="tabImg" aria-selected="true" data-i18n="tab.img"></button>
+          <button role="tab" id="tabTxt" aria-selected="false" data-i18n="tab.txt"></button>
         </div>
         <div id="paneImg">
-          <div class="drop" id="drop" tabindex="0" role="button" aria-label="เลือกรูปแท็บ">
+          <div class="drop" id="drop" tabindex="0" role="button" data-i18n-aria="drop.aria">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-            <strong>ลากรูปมาวาง หรือคลิกเพื่อเลือก</strong>
-            <span>PNG / JPG หลายหน้าได้ เรียงตามลำดับ</span>
+            <strong data-i18n="drop.title"></strong>
+            <span data-i18n="drop.sub"></span>
           </div>
           <input type="file" id="file" accept="image/*" multiple hidden>
           <div class="thumbs" id="thumbs"></div>
         </div>
         <div id="paneTxt" hidden>
           <textarea id="ascii" spellcheck="false" placeholder="e|---0---3---|&#10;B|---1---0---|&#10;G|---0---0---|&#10;D|---2---0---|&#10;A|---3---2---|&#10;E|-------3---|"></textarea>
-          <div class="row actions"><button class="btn primary" id="parseTxt">อ่านแท็บข้อความ</button></div>
+          <div class="row actions"><button class="btn primary" id="parseTxt" data-i18n="btn.parseTxt"></button></div>
         </div>
 
         <div class="fields">
-          <label class="f">จำนวนสาย
-            <select id="nStrings"><option value="6" selected>6 สาย (กีตาร์)</option><option value="7">7 สาย</option><option value="4">4 สาย (เบส / อูคูเลเล่)</option><option value="5">5 สาย (เบส)</option></select>
+          <label class="f"><span data-i18n="f.strings"></span>
+            <select id="nStrings"><option value="6" selected data-i18n="opt.s6"></option><option value="7" data-i18n="opt.s7"></option><option value="4" data-i18n="opt.s4"></option><option value="5" data-i18n="opt.s5"></option></select>
           </label>
-          <label class="f">จูนสาย
+          <label class="f"><span data-i18n="f.tuning"></span>
             <select id="tuning"></select>
           </label>
-          <label class="f full">ความไวการอ่านหมึก <span id="sensVal" class="small"></span>
+          <label class="f full"><span><span data-i18n="f.sens"></span> <span id="sensVal" class="small"></span></span>
             <input type="range" id="sens" min="-40" max="40" step="5" value="0">
           </label>
-          <label class="chk full"><input type="checkbox" id="deskew" checked> แก้ภาพเอียงอัตโนมัติ</label>
+          <label class="chk full"><input type="checkbox" id="deskew" checked> <span data-i18n="f.deskew"></span></label>
         </div>
         <div class="row actions">
-          <button class="btn primary" id="runOcr" disabled>อ่านแท็บจากรูป</button>
-          <button class="btn" id="runAi" hidden title="ส่งรูปให้ Claude อ่าน ใช้โควตา Claude ของคุณ">อ่านด้วย Claude AI</button>
+          <button class="btn primary" id="runOcr" disabled data-i18n="btn.runOcr"></button>
+          <button class="btn" id="runAi" hidden data-i18n="btn.runAi" data-i18n-title="btn.runAi.title"></button>
         </div>
         <div class="status" id="status" role="status"></div>
       </div>
 
       <div style="min-width:0">
         <div class="row" style="justify-content:space-between;margin-bottom:6px">
-          <span class="small" id="prevTitle">ตัวอย่างผลการอ่าน</span>
-          <label class="chk small"><input type="checkbox" id="showOverlay" checked> แสดงกรอบที่อ่านได้</label>
+          <span class="small" id="prevTitle" data-i18n="prev.title"></span>
+          <label class="chk small"><input type="checkbox" id="showOverlay" checked> <span data-i18n="prev.overlay"></span></label>
         </div>
-        <div class="preview" id="preview"><div class="empty">ยังไม่มีรูป</div></div>
+        <div class="preview" id="preview"><div class="empty" data-i18n="prev.empty"></div></div>
         <div class="legend">
-          <span><i style="border-color:#1f6f78"></i>เส้นสาย</span>
-          <span><i style="border-color:#2f7d4a"></i>ตัวเลขที่มั่นใจ</span>
-          <span><i style="border-color:#c58a00"></i>ควรตรวจ</span>
-          <span><i style="border-color:#b3362b"></i>เส้นกั้นห้อง</span>
+          <span><i style="border-color:#1f6f78"></i><span data-i18n="lg.lines"></span></span>
+          <span><i style="border-color:#2f7d4a"></i><span data-i18n="lg.ok"></span></span>
+          <span><i style="border-color:#c58a00"></i><span data-i18n="lg.check"></span></span>
+          <span><i style="border-color:#b3362b"></i><span data-i18n="lg.bar"></span></span>
         </div>
       </div>
     </div>
   </section>
 
   <section class="panel" aria-labelledby="s2">
-    <div class="step"><span class="n">2</span><h2 id="s2">ตรวจตัวเลข และใส่จังหวะ</h2><span class="hint">คลิกเลือกโน้ต (Shift เลือกช่วง) แล้วกดค่าจังหวะ · แก้ตัวเลขได้ในช่องโดยตรง</span></div>
+    <div class="step"><span class="n">2</span><h2 id="s2" data-i18n="s2.title"></h2><span class="hint" data-i18n="s2.hint"></span></div>
     <div class="song">
-      <label class="f">ชื่อเพลง<input id="title" placeholder="Untitled"></label>
-      <label class="f">ศิลปิน<input id="artist"></label>
-      <label class="f">Tempo (BPM)<input id="tempo" type="number" min="20" max="400" value="90"></label>
-      <label class="f">ตัวบน<input id="tsNum" type="number" min="1" max="32" value="4"></label>
-      <label class="f">ตัวล่าง<select id="tsDen"><option>2</option><option selected>4</option><option>8</option><option>16</option></select></label>
+      <label class="f"><span data-i18n="f.title"></span><input id="title" placeholder="Untitled"></label>
+      <label class="f"><span data-i18n="f.artist"></span><input id="artist"></label>
+      <label class="f"><span data-i18n="f.tempo"></span><input id="tempo" type="number" min="20" max="400" value="90"></label>
+      <label class="f"><span data-i18n="f.tsNum"></span><input id="tsNum" type="number" min="1" max="32" value="4"></label>
+      <label class="f"><span data-i18n="f.tsDen"></span><select id="tsDen"><option>2</option><option selected>4</option><option>8</option><option>16</option></select></label>
     </div>
 
     <div class="toolbar" id="toolbar">
       <span id="durBtns" class="row" style="gap:4px"></span>
       <span class="sep"></span>
-      <button class="btn" id="bDot" title="ประจุด (.)">จุด <kbd class="small">.</kbd></button>
-      <button class="btn" id="bTrip" title="สามพวง (T)">3 พวง <kbd class="small">T</kbd></button>
-      <button class="btn" id="bRest" title="ตัวหยุด (R)">ตัวหยุด <kbd class="small">R</kbd></button>
+      <button class="btn" id="bDot" data-i18n-title="btn.dot.title"><span data-i18n="btn.dot"></span> <kbd class="small">.</kbd></button>
+      <button class="btn" id="bTrip" data-i18n-title="btn.trip.title"><span data-i18n="btn.trip"></span> <kbd class="small">T</kbd></button>
+      <button class="btn" id="bRest" data-i18n-title="btn.rest.title"><span data-i18n="btn.rest"></span> <kbd class="small">R</kbd></button>
       <span class="sep"></span>
-      <button class="btn" id="bIns" title="แทรกจังหวะว่างหลังตัวที่เลือก (I)">+ แทรก</button>
-      <button class="btn" id="bDel" title="ลบจังหวะที่เลือก (Delete)">ลบ</button>
-      <button class="btn" id="bSplit" title="ตัดห้องใหม่หลังโน้ตที่เลือก">ตัดห้อง</button>
-      <button class="btn" id="bMerge" title="รวมห้องนี้กับห้องถัดไป">รวมห้อง</button>
+      <button class="btn" id="bIns" data-i18n="btn.ins" data-i18n-title="btn.ins.title"></button>
+      <button class="btn" id="bDel" data-i18n="btn.del" data-i18n-title="btn.del.title"></button>
+      <button class="btn" id="bSplit" data-i18n="btn.split" data-i18n-title="btn.split.title"></button>
+      <button class="btn" id="bMerge" data-i18n="btn.merge" data-i18n-title="btn.merge.title"></button>
       <span class="sep"></span>
-      <button class="btn" id="bEven" title="แบ่งจังหวะเท่ากันในห้องที่เลือก">แบ่งเท่ากัน</button>
-      <button class="btn" id="bSpace" title="เดาจากระยะห่างของตัวเลขในรูป">เดาจากระยะห่าง</button>
+      <button class="btn" id="bEven" data-i18n="btn.even" data-i18n-title="btn.even.title"></button>
+      <button class="btn" id="bSpace" data-i18n="btn.space" data-i18n-title="btn.space.title"></button>
       <span class="selinfo" id="selInfo"></span>
-      <div class="fxrow"><span class="lbl">เทคนิค</span><span id="fxBtns" class="row" style="gap:4px"></span><span class="selinfo" id="fxTarget"></span></div>
+      <div class="fxrow"><span class="lbl" data-i18n="fx.label"></span><span id="fxBtns" class="row" style="gap:4px"></span><span class="selinfo" id="fxTarget"></span></div>
     </div>
     <div class="measures" id="measures"></div>
-    <div class="kbd-help">คีย์ลัด: <kbd>1</kbd>ตัวกลม <kbd>2</kbd>ตัวขาว <kbd>3</kbd>ตัวดำ <kbd>4</kbd>เขบ็ต 1 ชั้น <kbd>5</kbd>2 ชั้น <kbd>6</kbd>3 ชั้น · <kbd>.</kbd>จุด <kbd>T</kbd>3 พวง <kbd>R</kbd>ตัวหยุด · <kbd>←</kbd><kbd>→</kbd>เลื่อน <kbd>I</kbd>แทรก <kbd>Del</kbd>ลบ · พิมพ์ <kbd>x</kbd> ในช่องเพื่อเป็น dead note<br>
-      เทคนิค (คลิกตัวเลขก่อน แล้วกด): <kbd>H</kbd>/<kbd>P</kbd> hammer/pull <kbd>B</kbd> bend <kbd>V</kbd> vibrato <kbd>S</kbd> slide <kbd>M</kbd> palm mute <kbd>L</kbd> let ring <kbd>G</kbd> ghost <kbd>N</kbd> harmonic <kbd>A</kbd> accent · ขณะพิมพ์ในช่องเพิ่ม <kbd>T</kbd> tremolo <kbd>.</kbd> staccato <kbd>=</kbd> tie <kbd>/</kbd> slide <kbd>~</kbd> vibrato · ใส่หลายโน้ตพร้อมกัน: เลือกหลายจังหวะแล้วกดปุ่มเทคนิค</div>
+    <div class="kbd-help" data-i18n-html="help.keys"></div>
   </section>
 
   <section class="panel" aria-labelledby="s3">
-    <div class="step"><span class="n">3</span><h2 id="s3">ฟังและส่งออก</h2></div>
+    <div class="step"><span class="n">3</span><h2 id="s3" data-i18n="s3.title"></h2></div>
     <div class="export">
-      <button class="btn" id="play">▶ ฟัง</button>
-      <button class="btn primary" id="dl">ดาวน์โหลด .gp5</button>
-      <button class="btn" id="copyAscii">คัดลอกเป็นแท็บข้อความ</button>
+      <button class="btn" id="play" data-i18n="btn.play"></button>
+      <button class="btn primary" id="dl" data-i18n="btn.dl"></button>
+      <button class="btn" id="copyAscii" data-i18n="btn.copy"></button>
       <span class="small" id="dlNote"></span>
     </div>
-    <p class="small" style="margin:10px 0 0;max-width:75ch">ไฟล์เป็นรูปแบบ Guitar Pro 5 เปิดได้ใน Guitar Pro 5–8, TuxGuitar, MuseScore และ Songsterr · ชื่อเพลงภาษาไทยจะถูกแทนด้วย ? เพราะรูปแบบ GP5 รองรับเฉพาะอักษรละติน</p>
+    <p class="small" style="margin:10px 0 0;max-width:75ch" data-i18n="s3.note"></p>
   </section>
 </div>
 <div class="toast" id="toast" hidden></div>
 
+<script>
+/*I18N*/
+</script>
 <script>
 /*GP5*/
 </script>

@@ -7,7 +7,7 @@ import pathlib
 root = pathlib.Path(__file__).resolve().parent.parent
 src = root / 'src'
 page = (src / 'shell.html').read_text(encoding='utf-8')
-for key, name, mod in [('GP5', 'gp5writer.js', 'GP5'), ('OCR', 'tabocr.js', 'TabOCR'), ('APP', 'app.js', None)]:
+for key, name, mod in [('I18N', 'i18n.js', 'I18N'), ('GP5', 'gp5writer.js', 'GP5'), ('OCR', 'tabocr.js', 'TabOCR'), ('APP', 'app.js', None)]:
     code = (src / name).read_text(encoding='utf-8')
     if mod:
         code = code.replace(f"if (typeof module !== 'undefined') module.exports = {mod};", '')
